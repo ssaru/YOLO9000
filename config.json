@@ -1,22 +1,19 @@
 {
-    "name": "darknet19",
+    "name": "YOLO9000",
     "n_gpu": 1,
     
     "arch": {
-        "type": "Darknet",
-        "args": {
-            "json_path": "darknet19.json",
-            "pretrained" : true
-        }
+        "type": "Yolo9000",
+        "args": {}
     },
     "data_loader": {
-        "type": "MnistDataLoader",
+        "type": "DetectionDataLoader",
         "args":{
-            "data_dir": "data/",
-            "batch_size": 128,
+            "data_dir": "/home/martin/Documents/dev/Deepbaksu_vision/Datasets/VOCdevkit/VOC2007/",
+            "batch_size": 32,
             "shuffle": true,
             "validation_split": 0.1,
-            "num_workers": 2
+            "num_workers": 4
         }
     },
     "optimizer": {
@@ -27,9 +24,9 @@
             "amsgrad": true
         }
     },
-    "loss": "nll_loss",
+    "loss": "Yolo9000Loss",
     "metrics": [
-        "my_metric", "my_metric2"
+        "my_metric"
     ],
     "lr_scheduler": {
         "type": "StepLR",
@@ -39,7 +36,7 @@
         }
     },
     "trainer": {
-        "epochs": 100,
+        "epochs": 1000,
         "save_dir": "saved/",
         "save_period": 1,
         "verbosity": 2,

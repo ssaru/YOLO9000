@@ -1,8 +1,10 @@
-tqdm==4.30.0
-torchvision==0.2.1
-imgaug==0.2.7
 torch==1.0.0
 matplotlib==3.0.2
-numpy==1.16.0
-Pillow==5.4.1
+imgaug==0.2.7
 torchsummary==1.5.1
+pyclustering==0.8.2
+torchvision==0.2.1
+numpy==1.16.0
+tqdm==4.30.0
+Pillow==5.4.1
+scikit_learn==0.20.2

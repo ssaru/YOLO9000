@@ -6,23 +6,38 @@ import data_loader.data_loaders as module_data
 import model.loss as module_loss
 import model.metric as module_metric
 import model.model as module_arch
+
 from trainer import Trainer
 from utils import Logger
+from utils.dimension_cluster import DimensionCluster
 
 
 def get_instance(module, name, config, *args):
+    print(config[name]['type'])
     return getattr(module, config[name]['type'])(*args, **config[name]['args'])
 
 def main(config, resume):
     train_logger = Logger()
+    print(config)
+
+    # build model architecture
+    dimension_cluster = DimensionCluster(root=config["data_loader"]["args"]["data_dir"],
+                                         display=False,
+                                         distance_metric="iou")
+    prior_boxes = dimension_cluster.process()
+
+    model = get_instance(module_arch, 'arch', config)
+    model.build(prior_boxes)
+    model.summary()
+    print(model.get_output_shape())
+    print(prior_boxes)
+    exit()
 
     # setup data_loader instances
     data_loader = get_instance(module_data, 'data_loader', config)
     valid_data_loader = data_loader.split_validation()
 
-    # build model architecture
-    model = get_instance(module_arch, 'arch', config)
-    print(model)
+
 
     # get function handles of loss and metrics
     loss = getattr(module_loss, config['loss'])
@@ -58,6 +73,8 @@ if __name__ == '__main__':
     if args.config:
         # load config file
         config = json.load(open(args.config))
+
+        # TODO. what's purpose?
         path = os.path.join(config['trainer']['save_dir'], config['name'])
     elif args.resume:
         # load config file from checkpoint,

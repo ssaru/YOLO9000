@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 from torchsummary.torchsummary import summary
 from base import BaseModel
@@ -11,11 +12,6 @@ class Yolo9000(BaseModel):
                  device="cpu",
                  input_size=(416, 416)):
         assert isinstance(num_prior_boxes, int)
-        assert num_prior_boxes == len(prior_boxes)
-        for box in prior_boxes:
-            assert len(box) == 2
-            for element in box:
-                assert isinstance(element, float)
 
         super(Yolo9000, self).__init__()
 
@@ -23,6 +19,7 @@ class Yolo9000(BaseModel):
         self.input_size = input_size
         self.num_coordinates = 5
         self.num_prior_boxes = num_prior_boxes
+        self.prior_boxes = None
         self.num_classes = num_classes
         self.output_shape = (self.num_coordinates + self.num_classes) * self.num_prior_boxes
 
@@ -104,6 +101,11 @@ class Yolo9000(BaseModel):
             nn.Conv2d(1024, self.output_shape, kernel_size=1, stride=1, padding=0))
 
     def forward(self, *input):
+        assert self.num_prior_boxes == len(self.prior_boxes)
+        for box in self.prior_boxes:
+            assert len(box) == 2
+            for element in box:
+                assert isinstance(element, float)
         """
         output structure
         [objness, tx, ty, tw, th, c1, ..., cn] x 5 = 125
@@ -138,3 +140,16 @@ class Yolo9000(BaseModel):
 
     def summary(self):
         summary(self, input_size=(3, self.input_size[0], self.input_size[1]), device=self.device)
+
+    def get_output_shape(self):
+        x = torch.rand(1, 3, self.input_size[0], self.input_size[1])
+        out = self.forward(x)
+        b, c, w, h = out.shape
+
+        return c, w, h
+
+    def build(self, prior_boxes):
+        self.set_prior_boxes(prior_boxes=prior_boxes)
+
+    def set_prior_boxes(self, prior_boxes):
+        self.prior_boxes = prior_boxes
