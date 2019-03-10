@@ -3,17 +3,40 @@ from utils.label_visualizer import visualize_detection_label
 from utils.augmentator import Augmenter
 import torchvision.transforms as transforms
 from imgaug import augmenters as iaa
+from data_loader.data_loaders import DetectionDataLoader
+
+import torch
 
 
 def main():
-    root = "/home/martin/Documents/dev/Deepbaksu_vision/Datasets/VOCdevkit/VOC2007"
+    root = "/home/martin/Documents/dev/Deepbaksu_vision/_Datasets/VOC2012"
 
     # Dataset class demo
     voc = VocDetection(root)
-    for i in range(10):
+    for i in range(1):
         image, target = voc.__getitem__(i)
-        print(image, target)
-        visualize_detection_label(image, target, voc.classes_list, (13, 13))
+        #print(image, target)
+        print(target)
+        #visualize_detection_label(image, target, voc.classes_list, (13, 13))
+
+    train_loader = DetectionDataLoader(data_dir=root,
+                                       batch_size=1,
+                                       shuffle=True,
+                                       output_shape=[125, 13, 13],
+                                       validation_split=0.1,
+                                       num_workers=1)
+
+    for (images, labels) in train_loader:
+        # print(images)
+        print("label shape : {}".format(labels.shape))
+        print("objness : {}".format(labels[0, :, :, 0]))
+        print("cx : {}".format(labels[0, :, :, 1]))
+        print("cy : {}".format(labels[0, :, :, 2]))
+        print("cw : {}".format(labels[0, :, :, 3]))
+        print("ch : {}".format(labels[0, :, :, 4]))
+        print("cls : {}".format(labels[0, :, :, 5]))
+        exit()
+
 
     # Augmentation Demo
     seq = iaa.SomeOf(2, [
@@ -35,5 +58,6 @@ def main():
         image, target = voc.__getitem__(i)
         print(image, target)
         visualize_detection_label(image, target, voc.classes_list, (13, 13))
+
 if __name__ == "__main__":
     main()

@@ -1,4 +1,5 @@
 import os
+import torchvision
 from PIL import Image
 from torch.utils import data
 
@@ -58,7 +59,7 @@ class VocDetection(data.Dataset):
         Returns:
             tuple: Tuple (image, target). target is the object returned by ``method``.
         """
-        assert isinstance(index, int)
+
 
         image = Image.open(self.image_path_list[index]).convert('RGB')
         box_annotation_dict = self.__parse_voc(self.annotation_path_list[index])
@@ -68,9 +69,9 @@ class VocDetection(data.Dataset):
 
         target = self.__convert_box_label_to_yolo_label(box_annotation_dict, self.classes_list)
         image = image.resize(self.resize_size)
+        image = torchvision.transforms.ToTensor()(image)
 
         return image, target
-
 
     def __len__(self):
         return len(self.image_path_list)

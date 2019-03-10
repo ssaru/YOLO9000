@@ -4,16 +4,20 @@
     
     "arch": {
         "type": "Yolo9000",
-        "args": {}
+        "args": {
+            "prior_boxes": [[0.0815404648553137, 0.13804731644524953], [0.8935830875249917, 0.9072204690364727], [0.22066863986723892, 0.3760369847076882], [0.43006069490404647, 0.6020577522476821], [0.6722030591603478, 0.7508179123598757]]
+        }
     },
     "data_loader": {
         "type": "DetectionDataLoader",
         "args":{
-            "data_dir": "/home/martin/Documents/dev/Deepbaksu_vision/Datasets/VOCdevkit/VOC2007/",
+            "data_dir": "/home/martin/Documents/dev/Deepbaksu_vision/_Datasets/VOC2012/",
             "batch_size": 32,
             "shuffle": true,
             "validation_split": 0.1,
-            "num_workers": 4
+            "num_workers": 4,
+            "output_shape": [125, 13, 13]
+
         }
     },
     "optimizer": {
@@ -24,9 +28,9 @@
             "amsgrad": true
         }
     },
-    "loss": "Yolo9000Loss",
+    "loss": "Loss",
     "metrics": [
-        "my_metric"
+        "detection_metric"
     ],
     "lr_scheduler": {
         "type": "StepLR",
