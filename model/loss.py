@@ -10,76 +10,50 @@ def nll_loss(output, target):
 
 
 class Loss():
-    def __init__(self):
-        self.layer1 = None
-        self.layer2 = None
-        self.layer3 = None
-        self.layer4 = None
-        self.layer5 = None
-        self.layer6 = None
-        self.layer7 = None
+    def __init__(self, model):
+        self.model = model
 
-        self.global_average_pooling = torch.nn.AvgPool2d(1)
+    def forward(self, prediction, y_hat, model):
 
-        self.bbox_loss = None
-        self.iou_loss = None
-        self.cls_loss_loss = None
+        p_shape = prediction.shape
+        y_shape = y_hat.shape
 
-        self.label_name = ('')
-        self.anchors = np.array([], dtype=np.float)
+        p_b, p_h, p_w, p_c = p_shape
+        y_b, y_h, y_w, y_c = y_shape
 
-        self.num_classses = len(self.label_name)
-        self.num_anchors = len(self.anchors)
+        # slice tensor of y_hat
+        y_t0 = y_hat[:, :, :, 0]
+        y_bx = y_hat[:, :, :, 1]
+        y_by = y_hat[:, :, :, 2]
+        y_bw = y_hat[:, :, :, 3]
+        y_bh = y_hat[:, :, :, 4]
+        
+        # TODO. 0. Implement one-hot encoding function
+        y_cls = one_hot(y_hat[:, :, :, 5])
 
-    def forward(self, data, im_data, gt_boxes=None, gt_classes=None, dontcare=None, size_index=0):
+        p_t0 = list()
+        p_tx = list()
+        p_ty = list()
+        p_tw = list()
+        p_th = list()
+        p_cls = list()
 
-        x = data[0]
-        out = self.layer1(x)
-        out = self.layer2(out)
-        out = self.layer3(out)
-        out = self.layer4(out)
-        out = self.layer5(out)
-        out = self.layer6(out)
-        out = self.layer7(out)
+        # slice tensor of prediction
+        for i in range(self.model.num_prior_boxes):
+            idx = i*5
+            p_t0.append(prediction[:, :, :, idx])
+            p_tx.append(prediction[:, :, :, idx + 1])
+            p_ty.append(prediction[:, :, :, idx + 2])
+            p_tw.append(prediction[:, :, :, idx + 3])
+            p_th.append(prediction[:, :, :, idx + 4])
+            p_cls.append(prediction[:, :, :, idx + 5:])
 
-        global_average_pool = self.global_average_pooling(out)
+        # TODO. 1. Getting Bw, Bh from tw, th
+        # TODO. 2. Calc IOU
+        # TODO. 3. Finding backprop Targets
+        # TODO. 4. Apply zero gradient to non Target
+        # TODO. 5. getting Pr(objness) * IOU(b, object) from IOU & t0
+        # TODO. 6. getting loss of each elements
 
-        batch_size, _, h, w = global_average_pool.size()
-        global_average_pool_reshaped = \
-            global_average_pool.permute(0, 2, 3, 1).contiguous().view(batch_size,
-                                                                      -1, self.num_anchors, self.num_classes + 5)
-
-        xy_pred = F.sigmoid(global_average_pool_reshaped[:, :, :, 0:2])
-        wh_pred = torch.exp(global_average_pool_reshaped[:, :, :, 2:4])
-        bbox_pred = torch.cat([xy_pred, wh_pred], 3)
-        iou_pred = F.sigmoid(global_average_pool_reshaped[:, :, :, 4:5])
-
-        score_pred = global_average_pool_reshaped[:, :, :, 5:].contiguous()
-        prob_pred = F.softmax(score_pred.view(-1, score_pred.size()[-1])).view_as(score_pred)
-
-        bbox_pred_np = bbox_pred.data.cpu().numpy()
-        iou_pred_np = iou_pred.data.cpu().numpy()
-
-        _boxes, _ious, _classes, _box_mask, _iou_mask, _class_mask = _build_target(bbox_pred_np,
-                                                                                   gt_boxes,
-                                                                                   gt_classes,
-                                                                                   dontcare,
-                                                                                   iou_pred_np,
-                                                                                   size_index)
-
-        _boxes = Variable(torch.from_numpy(Variable(torch.from_numpy(_boxes).type(torch.FloatTensor), volatile=False)))
-        _ious = Variable(torch.from_numpy(Variable(torch.from_numpy(_ious).type(torch.FloatTensor), volatile=False)))
-        _classes = Variable(torch.from_numpy(Variable(torch.from_numpy(_classes).type(torch.FloatTensor), volatile=False)))
-
-        num_boxes = sum((len(boxes) for boxes in gt_boxes))
-
-        # _boxes[:, :, :, 2:4] = torch.log(_boxes[:, :, :, 2:4])
-        box_mask = box_mask.expand_as(_boxes)
-        class_mask = class_mask.expand_as(prob_pred)
-
-        self.bbox_loss = nn.MSELoss(size_average=False)(bbox_pred * box_mask, _boxes * box_mask) / num_boxes
-        self.iou_loss = nn.MSELoss(size_average=False)(iou_pred * iou_mask, _ious * iou_mask) / num_boxes
-        self.cls_loss = nn.MSELoss(size_average=False)(prob_pred * class_mask, _classes * class_mask) / num_boxes
-
-        return bbox_pred, iou_pred, prob_pred
+        pass
 

@@ -129,10 +129,18 @@ class Yolo9000(BaseModel):
         for box_idx in range(self.num_prior_boxes):
             idx = box_idx * (self.num_coordinates + self.num_classes)
 
+            # t0
+            out[:, idx, :, :] = nn.Sigmoid()(out[:, idx, :, :])
+
+            # bx, by
             out[:, idx + 1, :, :] = nn.Sigmoid()(out[:, idx + 1, :, :])
             out[:, idx + 2, :, :] = nn.Sigmoid()(out[:, idx + 2, :, :])
+
+            # bw, bh
             out[:, idx + 3, :, :] = out[:, idx + 3, :, :].exp()
             out[:, idx + 4, :, :] = out[:, idx + 4, :, :].exp()
+
+            # classes
             out[:, idx + 5:idx + 5 + self.num_classes, :, :] = \
                 nn.Softmax(dim=1)(out[:, idx + 5:idx + 5 + self.num_classes, :, :])
 
