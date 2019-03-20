@@ -64,7 +64,7 @@ class DetectionDataLoader(BaseDataLoader):
                 # insert object row in specific label tensor index as (x,y)
                 # object row follow as
                 # [objectness, class, x offset, y offset, width ratio, height ratio]
-                np_label[cx][cy] = np.array([objectness, sigmoid_tx, sigmoid_ty, bw, bh, cls])
+                np_label[cy][cx] = np.array([objectness, sigmoid_tx, sigmoid_ty, bw, bh, cls])
 
             label = torch.from_numpy(np_label)
             targets.append(label)
