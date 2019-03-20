@@ -27,7 +27,7 @@ class Loss():
         y_by = y_hat[:, :, :, 2]
         y_bw = y_hat[:, :, :, 3]
         y_bh = y_hat[:, :, :, 4]
-        
+
         # TODO. 0. Implement one-hot encoding function
         y_cls = one_hot(y_hat[:, :, :, 5])
 
@@ -48,12 +48,13 @@ class Loss():
             p_th.append(prediction[:, :, :, idx + 4])
             p_cls.append(prediction[:, :, :, idx + 5:])
 
-        # TODO. 1. Getting Bw, Bh from tw, th
-        # TODO. 2. Calc IOU
-        # TODO. 3. Finding backprop Targets
-        # TODO. 4. Apply zero gradient to non Target
-        # TODO. 5. getting Pr(objness) * IOU(b, object) from IOU & t0
-        # TODO. 6. getting loss of each elements
+        # TODO. 1. Getting Bw, Bh from tw, th :: Why?
+        # TODO. 2. Calc IOU function verified (V)
+        # TODO. 3. Calc IOU
+        # TODO. 4. Finding backprop Targets
+        # TODO. 5. Apply zero gradient to non Target
+        # TODO. 6. getting Pr(objness) * IOU(b, object) from IOU & t0
+        # TODO. 7. getting loss of each elements
 
         pass
 
