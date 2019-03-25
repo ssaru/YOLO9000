@@ -62,12 +62,12 @@ class VocDetection(data.Dataset):
 
 
         image = Image.open(self.image_path_list[index]).convert('RGB')
-        box_annotation_dict = self.__parse_voc(self.annotation_path_list[index])
+        box_annotation_dict = self._parse_voc(self.annotation_path_list[index])
 
         if self.transform:
             image, box_annotation_dict = self.transform([image, box_annotation_dict])
 
-        target = self.__convert_box_label_to_yolo_label(box_annotation_dict, self.classes_list)
+        target = self._convert_box_label_to_yolo_label(box_annotation_dict, self.classes_list)
         image = image.resize(self.resize_size)
         image = torchvision.transforms.ToTensor()(image)
 
@@ -111,7 +111,7 @@ class VocDetection(data.Dataset):
 
         return classes_list
 
-    def __convert_box_label_to_yolo_label(self, label, classes_list):
+    def _convert_box_label_to_yolo_label(self, label, classes_list):
         assert isinstance(label, dict)
         assert isinstance(classes_list, list)
         for cls in classes_list:
@@ -151,14 +151,14 @@ class VocDetection(data.Dataset):
                 "ymax": float(_object["ymax"]),
             }
 
-            yolo_coordinate = self.__convert_coordinate(image_size, box_coordinate)
+            yolo_coordinate = self._convert_coordinate(image_size, box_coordinate)
             yolo_coordinate.insert(0, cls)
             yolo_label.append(yolo_coordinate)
 
         return yolo_label
 
     @staticmethod
-    def __convert_coordinate(image_size, box_coordinate):
+    def _convert_coordinate(image_size, box_coordinate):
         image_size_keys = image_size.keys()
         box_coordinate_keys = box_coordinate.keys()
         assert "width" in image_size_keys
@@ -190,7 +190,7 @@ class VocDetection(data.Dataset):
                 relative_box_width, relative_box_height]
 
     @staticmethod
-    def __parse_voc(annotation_path):
+    def _parse_voc(annotation_path):
         import xml.etree.ElementTree as Et
         assert isinstance(annotation_path, str)
 

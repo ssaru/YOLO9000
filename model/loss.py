@@ -19,9 +19,10 @@ class DetectionLoss(torch.nn.Module):
     def forward(self, prediction, y_hat, model):
 
         p_shape = prediction.shape
+        print("prediction shape : {}".format(p_shape))
         y_shape = y_hat.shape
 
-        p_b, p_h, p_w, p_c = p_shape
+        p_b, p_c, p_h, p_w = p_shape
         y_b, y_h, y_w, y_c = y_shape
 
         # slice tensor of y_hat
@@ -32,33 +33,31 @@ class DetectionLoss(torch.nn.Module):
         y_bh = y_hat[:, :, :, 4]
 
 
-        p_t0 = list()
-        p_tx = list()
-        p_ty = list()
-        p_tw = list()
-        p_th = list()
-        p_cls = list()
-
-        # TODO. build non object block each label
-        print(y_t0[0])
-        exit()
+        objness = y_t0
+        non_objness = self.build_nonobj_indicator_block(y_t0)
 
         # TODO seperate non object loss, object loss
 
         # TODO Apply only object cell in label tensor block
         # slice tensor of prediction
+
+        boxes = list()
         for i in range(model.num_prior_boxes):
-            idx = i*5
-            p_t0.append(prediction[:, :, :, idx])
-            p_tx.append(prediction[:, :, :, idx + 1])
-            p_ty.append(prediction[:, :, :, idx + 2])
-            p_tw.append(prediction[:, :, :, idx + 3])
-            p_th.append(prediction[:, :, :, idx + 4])
-            p_cls.append(prediction[:, :, :, idx + 5:])
+            idx = i*(5+model.num_classes)
 
+            _t0 = prediction[:, idx, :, :]
+            _tx = prediction[:, idx + 1, :, :]
+            _ty = prediction[:, idx + 2, :, :]
+            _tw = prediction[:, idx + 3, :, :]
+            _th = prediction[:, idx + 4, :, :]
+            _cls = prediction[:, idx + 5:idx + 5 + model.num_classes, :, :]
 
+            boxes.append([_tx, _ty, _tw, _th])
 
-        # TODO. 1. Calc IOU function verified (V)
+        print()
+        exit()
+
+        # TODO. 1. IOU Calculation method should be rewrite. cause didn't consider that operate tensorblock
         # TODO. 2. Convert [xmin, ymin, xmax, ymax] Box style for iou calculation
 
         exit()
@@ -80,7 +79,12 @@ class DetectionLoss(torch.nn.Module):
         pass
 
     def iou(self):
+        # iou calculation should be considered tensor
+
         pass
 
-    def build_nonobj_block(self):
-        pass
+    @staticmethod
+    def build_nonobj_indicator_block(objness):
+        # reference You Only Look Once Loss function
+        # https://arxiv.org/pdf/1506.02640.pdf
+        return torch.neg(torch.add(objness, -1))
