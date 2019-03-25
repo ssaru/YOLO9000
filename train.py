@@ -36,14 +36,85 @@ def main(config, resume):
     model.build(prior_boxes)
     model.summary()
     print(model.get_output_shape())
-    exit()
-
-
 
     # setup data_loader instances
     data_loader = get_instance(module_data, 'data_loader', config)
     valid_data_loader = data_loader.split_validation()
 
+    from torchvision import transforms
+    import matplotlib.pyplot as plt
+    from PIL import ImageDraw
+
+    for batch_idx, (d, t) in enumerate(data_loader):
+        c, _, _, _ = d.shape
+
+        for idx in range(c):
+            data = d[idx]
+            target = t[idx]
+            #print(data.shape)
+            #print(data, end="\n\n\n")
+
+            img = transforms.ToPILImage()(data)
+
+            draw = ImageDraw.Draw(img)
+
+            # Draw 13x13 Grid in Image
+            W, H = img.size
+            dx = W // 13
+            dy = H // 13
+
+            y_start = 0
+            y_end = H
+
+            for i in range(0, W, dx):
+                line = ((i, y_start), (i, y_end))
+                draw.line(line, fill="red")
+
+            x_start = 0
+            x_end = W
+            for i in range(0, H, dy):
+                line = ((x_start, i), (x_end, i))
+                draw.line(line, fill="red")
+
+            obj_coord = target[:, :, 0]
+            x_shift = target[:, :, 1]
+            y_shift = target[:, :, 2]
+            w_ratio = target[:, :, 3]
+            h_ratio = target[:, :, 4]
+            cls = target[:, :, 5]
+
+            # y
+            for j in range(13):
+                # x
+                for i in range(13):
+                    if obj_coord[j][i] == 1:
+
+                        x_center = dx * i + int(dx * x_shift[j][i])
+                        y_center = dy * j + int(dy * y_shift[j][i])
+                        print("i : {}, j:{}".format(i, j))
+                        width = int(w_ratio[j][i] * W)
+                        height = int(h_ratio[j][i] * H)
+
+                        xmin = x_center - (width // 2)
+                        ymin = y_center - (height // 2)
+                        xmax = xmin + width
+                        ymax = ymin + height
+
+                        draw.rectangle(((xmin, ymin), (xmax, ymax)), outline="blue")
+
+                        draw.rectangle(((dx * i, dy * j), (dx * i + dx, dy * j + dy)), outline='#00ff88')
+                        draw.ellipse(((x_center - 2, y_center - 2),
+                                      (x_center + 2, y_center + 2)),
+                                     fill='blue')
+                        draw.text((dx * i, dy * j), data_loader.dataset.classes_list[int(cls[j][i])])
+
+            plt.figure()
+            plt.imshow(img)
+            plt.show()
+
+            print(target.shape)
+            print(target, end="\n\n\n")
+        exit()
 
     # get function handles of loss and metrics
     loss = getattr(module_loss, config['loss'])
@@ -78,6 +149,7 @@ if __name__ == '__main__':
                         help='pre-calculated prior boxes txt file path(default: None)')
     args = parser.parse_args()
     config = None
+
     if args.config:
         # load config file
         config = json.load(open(args.config))
@@ -95,9 +167,10 @@ if __name__ == '__main__':
         raise AssertionError("Configuration file need to be specified. \
          Add '-c config.json', for example.")
 
-    if args.device:
-        os.environ["CUDA_VISIBLE_DEVICES"] = args.device
+    if torch.cuda.is_available():
+        if args.device:
+            os.environ["CUDA_VISIBLE_DEVICES"] = args.device
 
-    print("CUDA VISIBLE DEVICES : {}".format(os.environ["CUDA_VISIBLE_DEVICES"], end="\n\n"))
+        print("CUDA VISIBLE DEVICES : {}".format(os.environ["CUDA_VISIBLE_DEVICES"], end="\n\n"))
 
     main(config, args.resume)

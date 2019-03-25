@@ -29,7 +29,7 @@ class Loss():
         y_bh = y_hat[:, :, :, 4]
 
         # TODO. 0. Implement one-hot encoding function
-        y_cls = one_hot(y_hat[:, :, :, 5])
+        y_cls = self.one_hot(y_hat[:, :, :, 5], self.model.num_classes)
 
         p_t0 = list()
         p_tx = list()
@@ -58,3 +58,7 @@ class Loss():
 
         pass
 
+    def onehot(self, label, num_of_cls):
+        print(label)
+        print(num_of_cls)
+        pass
