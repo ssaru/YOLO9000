@@ -65,7 +65,6 @@ class DetectionDataLoader(BaseDataLoader):
                 # object row follow as
                 # [objectness, class, x offset, y offset, width ratio, height ratio]
                 np_label[cy][cx] = np.array([objectness, sigmoid_tx, sigmoid_ty, bw, bh, cls])
-                print("cy : {}, cx : {}".format(cy, cx))
 
             label = torch.from_numpy(np_label)
             targets.append(label)

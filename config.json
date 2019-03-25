@@ -28,7 +28,7 @@
             "amsgrad": true
         }
     },
-    "loss": "Loss",
+    "loss": "DetectionLoss",
     "metrics": [
         "detection_metric"
     ],
