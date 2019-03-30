@@ -251,6 +251,38 @@ def label_generator():
 
     return random.choice(case)
 
+def calc_np_iou(blockA_xywh, blockB_xywh):
+    """
+    1. 해당 사이트에 나와있는 iou 공식을 numpy방식으로 block level로 계산할 수 있게 array를 재조정한다.
+    https://www.pyimagesearch.com/2016/11/07/intersection-over-union-iou-for-object-detection/
+    2. 재조정된 array를 numpy 함수를 이용해서 iou metrix를 구한다.
+    """
+    """
+    print("BlackA XYWH : {}".format(blockA_xywh.shape))
+    print(blockA_xywh)
+    print("----------------------------------------------------------------")
+    print("\n\n\n")
+    print("BlackB XYWH : {}".format(blockB_xywh.shape))
+    print(blockB_xywh)
+    """
+
+    xA = blockA_xywh[:, :, 0]
+    yA = blockA_xywh[:, :, 1]
+    wA = blockA_xywh[:, :, 2]
+    hA = blockA_xywh[:, :, 3]
+
+    xB = blockB_xywh[:, :, 0]
+    yB = blockB_xywh[:, :, 1]
+    wB = blockB_xywh[:, :, 2]
+    hB = blockB_xywh[:, :, 3]
+
+    xAB = np.stack([xA, xB], axis=2)
+    print(xAB.shape)
+    print(xAB[:,:])
+
+    pass
+
+
 def np_iou(blockA: np.array, blockB: np.array, config: dict):
 
     S = config["S"]
@@ -261,24 +293,32 @@ def np_iou(blockA: np.array, blockB: np.array, config: dict):
     dy = H // S
 
     blockA = np.squeeze(blockA)
+    blockA_xywh = np.zeros(blockA.shape)
     A_tx = blockA[:, :, 0]
     A_ty = blockA[:, :, 1]
     A_tw = blockA[:, :, 2]
     A_th = blockA[:, :, 3]
 
     blockB = np.squeeze(blockB)
+    blockB_xywh = np.zeros(blockB.shape)
     B_tx = blockB[:, :, 0]
     B_ty = blockB[:, :, 1]
     B_tw = blockB[:, :, 2]
     B_th = blockB[:, :, 3]
+
+    iou_test_block = np.zeros((blockB.shape[0], blockB.shape[1]))
 
 
     # TODO. build 13x13 [xmin, ymin, xmax, ymax] tensor block
     # TODO. & Calc IOU
     for i in range(S):
         for j in range(S):
+
+            # 각 엘리먼트들(tx, ty, tw, th)는 0이면 안된다.
+            # 이유는 cell 기반으로 box영역으로 잡기 때문에
+
             A_center_x = dx * i + int(dx * A_tx[j][i])
-            A_center_y = dy * j + int(dx * A_tx[j][i])
+            A_center_y = dy * j + int(dx * A_ty[j][i])
             A_width = int(A_tw[j][i] * W)
             A_height = int(A_th[j][i] * H)
 
@@ -286,6 +326,33 @@ def np_iou(blockA: np.array, blockB: np.array, config: dict):
             Aymin = A_center_y - (A_height // 2)
             Axmax = Axmin + A_width
             Aymax = Aymin + A_height
+            A_xywh = np.array([Axmin, Aymin, Axmax, Aymax])
+
+            B_center_x = dx * i + int(dx * B_tx[j][i])
+            B_center_y = dy * j + int(dx * B_ty[j][i])
+            B_width = int(B_tw[j][i] * W)
+            B_height = int(B_th[j][i] * H)
+
+            Bxmin = B_center_x - (B_width // 2)
+            Bymin = B_center_y - (B_height // 2)
+            Bxmax = Bxmin + B_width
+            Bymax = Bymin + B_height
+            B_xywh = np.array([Bxmin, Bymin, Bxmax, Bymax])
+
+            blockA_xywh[j][i] = A_xywh
+            blockB_xywh[j][i] = B_xywh
+            print("A of elem : {}".format(blockA[j][i][:]))
+            print("B of elem : {}".format(blockB[j][i][:]))
+            print("A : {}".format([A_xywh]))
+            print("B : {}".format([B_xywh]))
+
+            #print(A_xywh)
+            #print(B_xywh)
+
+            iou_test_block[j][i] = calculate_intersection_over_union(A_xywh, B_xywh)
+    exit()
+    iou = calc_np_iou(blockA_xywh, blockB_xywh)
+
 
     print(blockA.shape)
     print(blockB.shape)
@@ -312,8 +379,8 @@ if __name__ == "__main__":
         "image_width" : 500,
         "image_height" : 375
     }
-    iou = np_iou(np_label, np_testcase, config)
 
+    iou = np_iou(np_label, np_testcase, config)
 
     exit()
 
