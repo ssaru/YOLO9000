@@ -45,14 +45,18 @@ def main(config, resume):
     from model.loss import DetectionLoss
     model.to('cpu')
     model.train()
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
     detection_loss = DetectionLoss()
     for batch_idx, (data, target) in enumerate(data_loader):
         data, target = data.to('cpu'), target.to('cpu')
 
+        optimizer.zero_grad()
         output = model(data)
-        loss = detection_loss(output, target, model)
+        loss = detection_loss(output, target, model, data)
+        loss.backward()
+        optimizer.step()
+        print("Loss : {}".format(loss.item()))
 
-        exit()
 
     # get function handles of loss and metrics
     loss = getattr(module_loss, config['loss'])
@@ -64,7 +68,6 @@ def main(config, resume):
     trainable_params = filter(lambda p: p.requires_grad, model.parameters())
     optimizer = get_instance(torch.optim, 'optimizer', config, trainable_params)
     lr_scheduler = get_instance(torch.optim.lr_scheduler, 'lr_scheduler', config, optimizer)
-    print("1")
     trainer = Trainer(model, loss, metrics, optimizer,
                       resume=resume,
                       config=config,
@@ -72,7 +75,6 @@ def main(config, resume):
                       valid_data_loader=None, #
                       lr_scheduler=lr_scheduler,
                       train_logger=train_logger)
-    print("2")
     trainer.train()
 
 if __name__ == '__main__':
