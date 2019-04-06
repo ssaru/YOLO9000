@@ -46,7 +46,7 @@ def main(config, resume):
     model.to('cpu')
     model.train()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
-    detection_loss = DetectionLoss()
+    detection_loss = DetectionLoss(model)
     for batch_idx, (data, target) in enumerate(data_loader):
         data, target = data.to('cpu'), target.to('cpu')
 

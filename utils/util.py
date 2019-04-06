@@ -53,7 +53,7 @@ def non_max_suppresssion(boxes, probs, threshold=0.5):
 
     return boxes[pick].astype("int")
 
-def calculate_intersection_over_union(boxA, boxB):
+def get_iou(boxA, boxB):
 
     xA = max(boxA[0], boxB[0])
     yA = max(boxA[1], boxB[1])

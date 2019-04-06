@@ -17,7 +17,6 @@
             "validation_split": 0.1,
             "num_workers": 0,
             "output_shape": [125, 13, 13]
-
         }
     },
     "optimizer": {
