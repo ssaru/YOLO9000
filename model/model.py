@@ -129,20 +129,22 @@ class Yolo9000(BaseModel):
         for box_idx in range(self.num_prior_boxes):
             idx = box_idx * (self.num_coordinates + self.num_classes)
 
+            # becareful!! if didn't use `.clone()` in slicing tensor
+            # raise gradient in-place operation error at `.backward()`
             # t0
-            out[:, idx, :, :] = nn.Sigmoid()(out[:, idx, :, :])
+            out[:, idx, :, :] = nn.Sigmoid()(out[:, idx, :, :].clone())
 
             # bx, by
-            out[:, idx + 1, :, :] = nn.Sigmoid()(out[:, idx + 1, :, :])
-            out[:, idx + 2, :, :] = nn.Sigmoid()(out[:, idx + 2, :, :])
+            out[:, idx + 1, :, :] = nn.Sigmoid()(out[:, idx + 1, :, :].clone())
+            out[:, idx + 2, :, :] = nn.Sigmoid()(out[:, idx + 2, :, :].clone())
 
             # bw, bh
-            out[:, idx + 3, :, :] = out[:, idx + 3, :, :].exp()
-            out[:, idx + 4, :, :] = out[:, idx + 4, :, :].exp()
+            out[:, idx + 3, :, :] = out[:, idx + 3, :, :].clone().exp()
+            out[:, idx + 4, :, :] = out[:, idx + 4, :, :].clone().exp()
 
             # classes
             out[:, idx + 5:idx + 5 + self.num_classes, :, :] = \
-                nn.Softmax(dim=1)(out[:, idx + 5:idx + 5 + self.num_classes, :, :])
+                nn.Sigmoid()(out[:, idx + 5:idx + 5 + self.num_classes, :, :].clone())
 
         return out
 

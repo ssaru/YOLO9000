@@ -1,10 +1,7 @@
 import torch
-import torch.nn.functional as F
-import torch.nn as nn
-from torch.autograd import Variable
 import numpy as np
 
-from typing import List, Tuple, Dict
+from typing import List
 from utils.util import get_iou
 
 class DetectionLoss(torch.nn.Module):
@@ -21,186 +18,30 @@ class DetectionLoss(torch.nn.Module):
         self.image_width, self.image_height = model.input_size
 
 
-    def forward(self, pred, y_hat, model, input):
+    def forward(self, pred, y_hat):
 
         width_S, height_S = get_pred_resolution(pred)
 
+        batch_size = pred.shape[0]
         x_interval = get_interval(self.image_width, width_S)
         y_interval = get_interval(self.image_height, height_S)
 
         obj_index_map = get_obj_index_map(y_hat)
         nonobj_index_map = get_nonobj_index_map(obj_index_map, self.num_classes)
+        nonobj_loss = get_nonobj_loss(pred, nonobj_index_map, self.num_prior_boxes,
+                                      self.num_of_anchorbox_elem, self._lambda_nonobj)
 
-        nonobj_loss_list = get_nonobj_loss_list(pred, self.num_prior_boxes, self.num_of_anchorbox_elem)
+        obj_loss = get_obj_loss(pred, y_hat, obj_index_map, self.prior_boxes,
+                                      x_interval, y_interval, self.image_width, self.image_height,
+                                      self.num_classes, self.num_prior_boxes,
+                                      self.num_of_anchorbox_elem, self._lambda_obj)
 
-        # calc loss condition as objness == 1
-        # find objness index
-        objness_np = obj_index_map.numpy()
-        objness_index = np.where(objness_np == 1.)
-        print(objness_index)
-        print(type(objness_index))
-        exit()
+        total_loss = (obj_loss + nonobj_loss) / batch_size
 
-        num_of_objness = len(objness_index[0])
-        for idx in range(num_of_objness):
-
-            pred_in_obj_idx = pred[objness_index[0][idx], :, objness_index[1][idx], objness_index[2][idx]]
-            gt_in_obj_idx = y_hat[objness_index[0][idx], objness_index[1][idx], objness_index[2][idx], :]
-            # tensor([1.0000, 0.5884, 0.1257, 0.8982, 0.8568, 7.0000])
-            ious = list()
-
-            for i in range(num_prior_boxes):
-
-                start_idx = i * (num_of_anchorbox_elem)
-
-                cell_x_idx = objness_index[2][idx]
-                cell_y_idx = objness_index[1][idx]
-                prior_box = prior_boxes[i]
-
-                anchor_box = pred_in_obj_idx[start_idx : (start_idx + num_of_anchorbox_elem)]
-
-                p_objness = anchor_box[0]
-                p_tx = anchor_box[1]
-                p_ty = anchor_box[2]
-                p_tw = anchor_box[3]
-                p_th = anchor_box[4]
-                p_cls = anchor_box[5:]
-
-                p_center_x = dx * cell_x_idx + int(dx * p_tx)
-                p_center_y = dy * cell_y_idx + int(dy * p_ty)
-                p_w = int(prior_box[0] * p_tw * image_W)
-                p_h = int(prior_box[1] * p_th * image_H)
-
-                p_bx = p_center_x - (p_w // 2)
-                p_by = p_center_y - (p_h // 2)
-                p_bw = p_bx + p_w
-                p_bh = p_by + p_h
-
-                g_objness = gt_in_obj_idx[0]
-                g_tx = gt_in_obj_idx[1]
-                g_ty = gt_in_obj_idx[2]
-                g_tw = gt_in_obj_idx[3]
-                g_th = gt_in_obj_idx[4]
-                # it should be apply one-hot encoding
-                g_cls = gt_in_obj_idx[5]
-
-                g_center_x = dx * cell_x_idx + int(dx * g_tx)
-                g_center_y = dy * cell_y_idx + int(dy * g_ty)
-                g_w = int(g_tw * image_W)
-                g_h = int(g_th * image_H)
-
-                g_bx = g_center_x - (g_w // 2)
-                g_by = g_center_y - (g_h // 2)
-                g_bw = g_bx + g_w
-                g_bh = g_by + g_h
-
-                _pred_box = [p_bx, p_by, p_bw, p_bh]
-                _gt_box = [g_bx, g_by, g_bw, g_bh]
-                iou = calculate_intersection_over_union(_pred_box, _gt_box)
-                ious.append(iou)
-
-                # sanity check using visualization
-                """
-                import torchvision.transforms as transforms
-                from PIL import Image, ImageDraw
-                import matplotlib.pyplot as plt
-                # iou 계산식이 필요함.
-
-                img = input[objness_index[0][idx], :, :, :]
-
-                print("predicted boxes : {}".format([p_bx, p_by, p_bw, p_bh]))
-                print("gt boxes : {}".format([g_bx, g_by, g_bw, g_bh]))
-                print("iou : {}".format(iou))
-
-                img = transforms.ToPILImage()(img)
-                draw = ImageDraw.Draw(img)
-                dx = int(dx)
-                dy = int(dy)
-                y_start = 0
-                y_end = image_H
-
-                for i in range(0, image_W, dx):
-                    line = ((i, y_start), (i, y_end))
-                    draw.line(line, fill="red")
-
-                x_start = 0
-                x_end = image_W
-                for i in range(0, image_H, dy):
-                    line = ((x_start, i), (x_end, i))
-                    draw.line(line, fill="red")
-
-                print("grid_S : {}, dx : {}, dy : {}".format(grid_S, dx, dy))
-                print("image_W : {}, image_H : {}".format(image_W, image_H))
-                print("image size : {}".format(img.size))
-                print("cls : {}".format(g_cls))
-
-                draw.rectangle(((int(p_bx), int(p_by)), (int(p_bw), int(p_bh))), outline="blue")
-                draw.rectangle(((int(g_bx), int(g_by)), (int(g_bw), int(g_bh))), outline="green")
-                draw.ellipse(((g_center_x - 2, g_center_y - 2),
-                              (g_center_x + 2, g_center_y + 2)),
-                             fill='green')
-
-                cls_list = ['aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car', 'cat', 'chair', 'cow', 'diningtable', 'dog', 'horse', 'motorbike', 'person', 'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor']
-                draw.text((g_bx, g_by), cls_list[int(g_cls)])
-
-                plt.figure()
-                plt.imshow(img)
-                plt.show()
-                """
-            max_iou_value = max(ious)
-
-            if max_iou_value >= .5:
-                #print("IOU : {}".format(ious))
-                #print("Max IOU : {}, index : {}".format(max(ious), ious.index(max(ious))))
-
-                max_iou_idx = ious.index(max_iou_value)
-                start_idx = max_iou_idx * (num_of_anchorbox_elem)
-                anchor_box = pred_in_obj_idx[start_idx: (start_idx + num_of_anchorbox_elem)]
-
-                p_objness = anchor_box[0]
-                p_tx = anchor_box[1]
-                p_ty = anchor_box[2]
-                p_tw = anchor_box[3]
-                p_th = anchor_box[4]
-                p_cls = anchor_box[5:]
-
-                g_objness = gt_in_obj_idx[0]
-                g_tx = gt_in_obj_idx[1]
-                g_ty = gt_in_obj_idx[2]
-                g_tw = gt_in_obj_idx[3]
-                g_th = gt_in_obj_idx[4]
-
-                # ONE HOT Encoding
-                g_cls = gt_in_obj_idx[5].type(torch.LongTensor)
-                num_digits = p_cls.shape[-1]
-                y_onehot_cls = torch.zeros(1, num_digits).squeeze()
-                y_onehot_cls[g_cls-1] = 1.
-
-                _objness = p_objness * max_iou_value
-
-                _obj_loss = torch.pow(_objness - g_objness, 2)
-                _tx_loss = torch.pow(p_tx - g_tx, 2)
-                _ty_loss = torch.pow(p_ty - g_ty, 2)
-                _tw_loss = torch.pow(p_tw - g_tw, 2)
-                _th_loss = torch.pow(p_th - g_th, 2)
-                _cls_loss = torch.sum(torch.pow(p_cls - y_onehot_cls, 2))
-
-                box_loss = self.lambda_obj * (_tx_loss + _ty_loss + _tw_loss + _th_loss)
-
-                _loss = box_loss + _obj_loss + _cls_loss
-
-                loss.append(_loss)
+        return total_loss
 
 
-        Loss = loss[0]
-        for i in range(len(loss)):
-            Loss += loss[i] if i != 0 else 0
-
-        Loss = Loss / p_shape[0]
-
-        return Loss
-
-def get_obj_loss_list(pred: torch.tensor, target: torch.tensor, obj_index_map: torch.tensor,
+def get_obj_loss(pred: torch.tensor, target: torch.tensor, obj_index_map: torch.tensor,
                       prior_boxes: List[List[int]], x_interval: float, y_interval: float,
                       input_image_width: int, input_image_height: int, num_classes: int,
                       num_anchor_boxes: int, anchor_channels: int, lambda_obj: float) -> List[torch.tensor]:
@@ -232,7 +73,7 @@ def get_obj_loss_list(pred: torch.tensor, target: torch.tensor, obj_index_map: t
     num_of_obj = len(object_map[0])
 
     for idx in range(num_of_obj):
-        pred_on_obj = pred[object_map[0][idx], :, object_map[1][idx], object_map[2][idx]]
+        pred_on_obj = pred[object_map[0][idx], :, object_map[2][idx], object_map[1][idx]]
         gt_on_obj = target[object_map[0][idx], object_map[1][idx], object_map[2][idx], :]
 
         ious = get_ious(pred_on_obj, gt_on_obj, object_map, prior_boxes,
@@ -241,10 +82,9 @@ def get_obj_loss_list(pred: torch.tensor, target: torch.tensor, obj_index_map: t
 
         max_iou = max(ious)
 
-
         if max_iou >= .5:
             max_iou_idx = ious.index(max_iou)
-            anchor_box = get_anchor(pred, max_iou_idx, anchor_channels)
+            anchor_box = get_anchor(pred_on_obj, max_iou_idx, anchor_channels)
 
             pred_objness = anchor_box[0] * max_iou
             pred_tx = anchor_box[1]
@@ -253,25 +93,26 @@ def get_obj_loss_list(pred: torch.tensor, target: torch.tensor, obj_index_map: t
             pred_th = anchor_box[4]
             pred_cls = anchor_box[5:]
 
-            target_objness = target[0]
-            target_tx = target[1]
-            target_ty = target[2]
-            target_tw = target[3]
-            target_th = target[4]
-            target_cls = onehot(target[5], num_classes)
+            target_objness = gt_on_obj[0]
+            target_tx = gt_on_obj[1]
+            target_ty = gt_on_obj[2]
+            target_tw = gt_on_obj[3]
+            target_th = gt_on_obj[4]
+            target_cls = onehot(gt_on_obj[5], num_classes)
 
-            obj_loss = torch.pow(pred_objness - target_objness, 2)
-            tx_loss = torch.pow(pred_tx - target_tx, 2)
-            ty_loss = torch.pow(pred_ty - target_ty, 2)
-            tw_loss = torch.pow(pred_tw - target_tw, 2)
-            th_loss = torch.pow(pred_th - target_th, 2)
-            cls_loss = torch.pow(pred_cls - target_cls, 2)
+            obj_loss = torch.sum(torch.pow(pred_objness - target_objness, 2))
+            tx_loss = lambda_obj * torch.sum(torch.pow(pred_tx - target_tx, 2))
+            ty_loss = lambda_obj * torch.sum(torch.pow(pred_ty - target_ty, 2))
+            tw_loss = lambda_obj * torch.sum(torch.pow(pred_tw - target_tw, 2))
+            th_loss = lambda_obj * torch.sum(torch.pow(pred_th - target_th, 2))
+            cls_loss = lambda_obj * torch.sum(torch.pow(pred_cls - target_cls, 2))
 
-            box_loss = lambda_obj * (tx_loss + ty_loss + tw_loss + th_loss)
-            loss = box_loss + obj_loss + cls_loss
+            loss = obj_loss + tx_loss + ty_loss + tw_loss + th_loss + cls_loss
             obj_loss_list.append(loss)
 
-    return obj_loss_list
+    obj_losses = torch.stack(obj_loss_list)
+
+    return torch.sum(obj_losses)
 
 def onehot(class_block: torch.tensor, num_classes: int) -> torch.tensor:
     """get cls as result of onehot encoding for classes loss
@@ -285,6 +126,7 @@ def onehot(class_block: torch.tensor, num_classes: int) -> torch.tensor:
     """
     cls = class_block.type(torch.LongTensor)
     onehot_cls = torch.zeros(1, num_classes).squeeze()
+    onehot_cls.requires_grad = False
     onehot_cls[cls] = 1.
 
     return onehot_cls
@@ -319,7 +161,7 @@ def get_ious(pred: torch.tensor, target: torch.tensor, object_map: np.ndarray,
         y_idx = object_map[1][anchor_idx]
         prior_box = prior_boxes[anchor_idx]
 
-        anchor_box = get_anchor(pred, anchor_idx, anchor_channels).numpy()
+        anchor_box = get_anchor(pred, anchor_idx, anchor_channels).detach().numpy()
 
         pred_box = boxinfo_convert_xywh_stype(anchor_box, x_idx, y_idx, x_interval, y_interval,
                                               input_image_width, input_image_height, prior_box)
@@ -385,13 +227,16 @@ def get_obj_location_index(obj_index_map: torch.tensor) -> np.ndarray:
     object_indexmap_tuple = np.where(np_obj_index_map == 1.)
     return object_indexmap_tuple
 
-def get_nonobj_loss_list(pred: torch.tensor, num_anchor_boxes: int,
+def get_nonobj_loss(pred: torch.tensor, nonobj_index_map: torch.tensor, num_anchor_boxes: int,
                          anchor_channels: int, lambda_noobj: float) -> List[torch.tensor]:
     """get loss as non-object loss
 
     Args:
         pred (torch.tensor) : result of inference.
                               shape of pred as [batch, channels, S, S]
+        nonobj_index_map (torch.tensor) : non-object location indices map consist of torch.tensor.
+                                          shape of noobj_index_map is same with result of class block
+                                          as [batch, number of classes, S, S]
         num_anchor_boxes (int) : number of anchor boxes
         anchor_channels (int) : number of anchor channels
         lambda_noobj (float) : loss weight about object not existence case
@@ -404,10 +249,13 @@ def get_nonobj_loss_list(pred: torch.tensor, num_anchor_boxes: int,
         anchor_box = get_anchor(pred, anchor_idx, anchor_channels)
         class_block = get_class_block(anchor_box)
         target = torch.zeros(class_block.shape)
-        anchor_nonobj_cls_loss = lambda_noobj * torch.pow(class_block - target, 2)
+        anchor_cls_loss = lambda_noobj * torch.pow(class_block - target, 2)
+        anchor_nonobj_cls_loss = torch.sum(anchor_cls_loss * nonobj_index_map)
         nonobj_loss_list.append(anchor_nonobj_cls_loss)
 
-    return nonobj_loss_list
+    nonobj_losses = torch.stack(nonobj_loss_list)
+
+    return torch.sum(nonobj_losses)
 
 def get_anchor(pred: torch.tensor, idx: int, anchor_box_channels: int) -> torch.tensor:
     """get the anchor box for a specific index
@@ -422,9 +270,15 @@ def get_anchor(pred: torch.tensor, idx: int, anchor_box_channels: int) -> torch.
         anchor_box (torch.tensor) : detection result contain box and class information.
                                     shape of classes as [batch, [boxinfo(5) + number of classes], S, S]
     """
+    shape = len(pred.shape)
 
     start_idx = idx * (anchor_box_channels)
-    anchor_box = pred[:, start_idx: (start_idx + anchor_box_channels), :, :]
+    if shape == 1:
+        anchor_box = pred[start_idx: (start_idx + anchor_box_channels)]
+    elif shape == 4:
+        anchor_box = pred[:, start_idx: (start_idx + anchor_box_channels), :, :]
+    else:
+        raise Exception("shape of input parameter `pred` wrong. It should be 1 or 4")
 
     return anchor_box
 
