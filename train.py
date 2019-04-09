@@ -35,7 +35,6 @@ def main(config, resume):
     model = get_instance(module_arch, 'arch', config)
     model.build(prior_boxes)
     model.summary()
-    print(model.get_output_shape())
 
     # setup data_loader instances
     data_loader = get_instance(module_data, 'data_loader', config)
@@ -52,7 +51,7 @@ def main(config, resume):
 
         optimizer.zero_grad()
         output = model(data)
-        loss = detection_loss(output, target, model, data)
+        loss = detection_loss(output, target)
         loss.backward()
         optimizer.step()
         print("Loss : {}".format(loss.item()))
