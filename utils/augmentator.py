@@ -99,10 +99,10 @@ class Augmenter():
 
         for _object in box_annotation_dict["object"]:
             name = _object["name"]
-            xmin = int(_object["xmin"])
-            ymin = int(_object["ymin"])
-            xmax = int(_object["xmax"])
-            ymax = int(_object["ymax"])
+            xmin = int(float(_object["xmin"]))
+            ymin = int(float(_object["ymin"]))
+            xmax = int(float(_object["xmax"]))
+            ymax = int(float(_object["ymax"]))
             bbs.bounding_boxes.append(ia.BoundingBox(x1=xmin,
                                                      x2=xmax,
                                                      y1=ymin,
