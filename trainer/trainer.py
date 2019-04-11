@@ -47,7 +47,8 @@ class Trainer(BaseTrainer):
         self.model.train()
     
         total_loss = 0
-        total_metrics = np.zeros(len(self.metrics))
+        # TODO. should be implementate object detection evaluation metric
+        # total_metrics = np.zeros(len(self.metrics))
         for batch_idx, (data, target) in enumerate(self.data_loader):
             data, target = data.to(self.device), target.to(self.device)
 
@@ -60,7 +61,9 @@ class Trainer(BaseTrainer):
             self.writer.set_step((epoch - 1) * len(self.data_loader) + batch_idx)
             self.writer.add_scalar('loss', loss.item())
             total_loss += loss.item()
-            total_metrics += self._eval_metrics(output, target)
+
+            # TODO. should be implementate object detection evaluation metric
+            #total_metrics += self._eval_metrics(output, target)
 
             if self.verbosity >= 2 and batch_idx % self.log_step == 0:
                 self.logger.info('Train Epoch: {} [{}/{} ({:.0f}%)] Loss: {:.6f}'.format(
@@ -73,7 +76,8 @@ class Trainer(BaseTrainer):
 
         log = {
             'loss': total_loss / len(self.data_loader),
-            'metrics': (total_metrics / len(self.data_loader)).tolist()
+            # TODO. should be implementate object detection evaluation metric
+            # 'metrics': (total_metrics / len(self.data_loader)).tolist()
         }
 
         if self.do_validation:
@@ -96,7 +100,8 @@ class Trainer(BaseTrainer):
         """
         self.model.eval()
         total_val_loss = 0
-        total_val_metrics = np.zeros(len(self.metrics))
+        # TODO. should be implementate object detection evaluation metric
+        #total_val_metrics = np.zeros(len(self.metrics))
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(self.valid_data_loader):
                 data, target = data.to(self.device), target.to(self.device)
@@ -107,11 +112,13 @@ class Trainer(BaseTrainer):
                 self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + batch_idx, 'valid')
                 self.writer.add_scalar('loss', loss.item())
                 total_val_loss += loss.item()
-                total_val_metrics += self._eval_metrics(output, target)
+                # TODO. should be implementate object detection evaluation metric
+                # total_val_metrics += self._eval_metrics(output, target)
                 self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
 
         return {
             'val_loss': total_val_loss / len(self.valid_data_loader),
-            'val_metrics': (total_val_metrics / len(self.valid_data_loader)).tolist()
+            # # TODO. should be implementate object detection evaluation metric
+            #'val_metrics': (total_val_metrics / len(self.valid_data_loader)).tolist()
         }
 

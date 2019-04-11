@@ -27,6 +27,7 @@ def main(config, resume):
                                              display=False,
                                              distance_metric="iou")
         prior_boxes = dimension_cluster.process()
+        print("prior_boxes : {}".format(prior_boxes))
     elif have_prior_boxes:
         prior_boxes = config["arch"]["args"]["prior_boxes"]
     else:
@@ -71,7 +72,7 @@ def main(config, resume):
                       resume=resume,
                       config=config,
                       data_loader=data_loader,
-                      valid_data_loader=None, #
+                      valid_data_loader=valid_data_loader,
                       lr_scheduler=lr_scheduler,
                       train_logger=train_logger)
     trainer.train()
@@ -92,7 +93,6 @@ if __name__ == '__main__':
     if args.config:
         # load config file
         config = json.load(open(args.config))
-        print(config, end="\n\n")
 
         # TODO. what's purpose?
         path = os.path.join(config['trainer']['save_dir'], config['name'])
@@ -106,10 +106,7 @@ if __name__ == '__main__':
         raise AssertionError("Configuration file need to be specified. \
          Add '-c config.json', for example.")
 
-    if torch.cuda.is_available():
-        if args.device:
-            os.environ["CUDA_VISIBLE_DEVICES"] = args.device
-
-        print("CUDA VISIBLE DEVICES : {}".format(os.environ["CUDA_VISIBLE_DEVICES"], end="\n\n"))
+    if args.device:
+        os.environ["CUDA_VISIBLE_DEVICES"] = args.device
 
     main(config, args.resume)

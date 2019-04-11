@@ -28,9 +28,7 @@
         }
     },
     "loss": "DetectionLoss",
-    "metrics": [
-        "detection_metric"
-    ],
+
     "lr_scheduler": {
         "type": "StepLR",
         "args": {
@@ -41,10 +39,10 @@
     "trainer": {
         "epochs": 1000,
         "save_dir": "saved/",
-        "save_period": 1,
+        "save_period": 100,
         "verbosity": 2,
         
-        "monitor": "min val_loss",
+        "monitor": "off",
         "early_stop": 10,
         
         "tensorboardX": true,
