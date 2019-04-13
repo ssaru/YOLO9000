@@ -26,7 +26,10 @@
             "amsgrad": true
         }
     },
-    "loss": "DetectionLoss",
+    "loss": {
+        "type": "DetectionLoss",
+        "args": {}
+    },
 
     "lr_scheduler": {
         "type": "StepLR",
@@ -45,6 +48,7 @@
         "early_stop": 10,
         
         "tensorboardX": true,
+        "wandb": true,
         "log_dir": "saved/runs"
     }
 }

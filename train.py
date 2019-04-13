@@ -2,6 +2,7 @@ import os
 import json
 import argparse
 import torch
+import wandb
 import data_loader.data_loaders as module_data
 import model.loss as module_loss
 import model.metric as module_metric
@@ -37,11 +38,16 @@ def main(config, resume):
     model.build(prior_boxes)
     model.summary()
 
+    if config["trainer"]["wandb"]:
+        wandb.init()
+        wandb.watch(model)
+
     # setup data_loader instances
     data_loader = get_instance(module_data, 'data_loader', config)
     valid_data_loader = data_loader.split_validation()
 
     # TODO. until line working check finisehd
+    """
     from model.loss import DetectionLoss
     model.to('cpu')
     model.train()
@@ -56,11 +62,15 @@ def main(config, resume):
         loss.backward()
         optimizer.step()
         print("Loss : {}".format(loss.item()))
-
+    """
 
     # get function handles of loss and metrics
-    loss = getattr(module_loss, config['loss'])
-    metrics = [getattr(module_metric, met) for met in config['metrics']]
+    loss = get_instance(module_loss, "loss", config, model)
+
+    if "metrics" in config.keys():
+        metrics = [getattr(module_metric, met) for met in config['metrics']]
+    else:
+        metrics = None
 
 
     # build optimizer, learning rate scheduler.
@@ -87,6 +97,7 @@ if __name__ == '__main__':
                            help='indices of GPUs to enable (default: all)')
     parser.add_argument('-p', '--prior_boxes', default=None, type=str,
                         help='pre-calculated prior boxes txt file path(default: None)')
+
     args = parser.parse_args()
     config = None
 

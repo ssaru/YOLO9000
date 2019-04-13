@@ -156,7 +156,7 @@ class VocDetection(data.Dataset):
             yolo_coordinate = self._convert_coordinate(image_size, box_coordinate)
             yolo_coordinate.insert(0, cls)
             yolo_label.append(yolo_coordinate)
-        
+
         return yolo_label
 
     @staticmethod

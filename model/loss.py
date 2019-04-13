@@ -7,7 +7,6 @@ from utils.util import get_iou
 class DetectionLoss(torch.nn.Module):
     def __init__(self, model):
         super(DetectionLoss, self).__init__()
-
         self._lambda_obj = 5.
         self._lambda_nonobj = .5
         self.prior_boxes = model.prior_boxes
