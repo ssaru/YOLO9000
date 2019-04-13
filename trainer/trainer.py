@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import wandb
 from torchvision.utils import make_grid
 from base import BaseTrainer
 
@@ -60,6 +61,10 @@ class Trainer(BaseTrainer):
 
             self.writer.set_step((epoch - 1) * len(self.data_loader) + batch_idx)
             self.writer.add_scalar('loss', loss.item())
+            if self.wandb:
+                wandb.log(
+                    {'train_loss': loss.item()}
+                )
             total_loss += loss.item()
 
             # TODO. should be implementate object detection evaluation metric
@@ -112,6 +117,11 @@ class Trainer(BaseTrainer):
                 self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + batch_idx, 'valid')
                 self.writer.add_scalar('loss', loss.item())
                 total_val_loss += loss.item()
+
+                if self.wandb:
+                    wandb.log(
+                        {'Val_loss': loss.item()}
+                    )
                 # TODO. should be implementate object detection evaluation metric
                 # total_val_metrics += self._eval_metrics(output, target)
                 self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))

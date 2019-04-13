@@ -32,6 +32,7 @@ class BaseTrainer:
         self.save_period = cfg_trainer['save_period']
         self.verbosity = cfg_trainer['verbosity']
         self.monitor = cfg_trainer.get('monitor', 'off')
+        self.wandb = cfg_trainer['wandb']
 
         # configuration to monitor model performance and save best
         if self.monitor == 'off':
