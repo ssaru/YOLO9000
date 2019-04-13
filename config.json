@@ -5,14 +5,13 @@
     "arch": {
         "type": "Yolo9000",
         "args": {
-            "prior_boxes": [[0.0815404648553137, 0.13804731644524953], [0.8935830875249917, 0.9072204690364727], [0.22066863986723892, 0.3760369847076882], [0.43006069490404647, 0.6020577522476821], [0.6722030591603478, 0.7508179123598757]]
         }
     },
     "data_loader": {
         "type": "DetectionDataLoader",
         "args":{
-            "data_dir": "/Users/martin/Documents/dev/Deepbaksu_vision/_Datasets/VOCdevkit/VOC2012/",
-            "batch_size": 10,
+            "data_dir": "/home/keti-1080ti/Documents/dev/Deepbaksu_vision/_Datasets/VOCdevkit/VOC2012",
+            "batch_size": 32,
             "shuffle": true,
             "validation_split": 0.1,
             "num_workers": 0,
