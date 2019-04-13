@@ -55,7 +55,7 @@ class Trainer(BaseTrainer):
 
             self.optimizer.zero_grad()
             output = self.model(data)
-            loss = self.loss(output, target)
+            loss = self.loss(output, target, self.device)
             loss.backward()
             self.optimizer.step()
 
