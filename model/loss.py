@@ -130,8 +130,8 @@ def get_obj_loss(pred: torch.tensor, target: torch.tensor, obj_index_map: torch.
                 anchor_cls_loss = torch.sum(lambda_nonobj * torch.pow(class_block - cls_target, 2))
                 nonobj_loss_list.append(anchor_cls_loss)
 
-    nonobj_losses = torch.stack(nonobj_loss_list)
-    obj_losses = torch.stack(obj_loss_list)
+    nonobj_losses = torch.stack(nonobj_loss_list).to(device)
+    obj_losses = torch.stack(obj_loss_list).to(device)
 
     return torch.sum(obj_losses) + torch.sum(nonobj_losses)
 
@@ -283,7 +283,7 @@ def get_nonobj_loss(pred: torch.tensor, nonobj_index_map: torch.tensor, num_anch
         anchor_nonobj_cls_loss = torch.sum(anchor_cls_loss * nonobj_index_map)
         nonobj_loss_list.append(anchor_nonobj_cls_loss)
 
-    nonobj_losses = torch.stack(nonobj_loss_list)
+    nonobj_losses = torch.stack(nonobj_loss_list).to(device)
 
     return torch.sum(nonobj_losses)
 
