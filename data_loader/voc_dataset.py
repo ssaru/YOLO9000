@@ -125,7 +125,9 @@ class VocDetection(data.Dataset):
         assert "object" in root_keys
         assert "width" in size_keys
         assert "height" in size_keys
-        assert number_of_objects != 0
+
+        if number_of_objects != 0:
+            return [[0., 0., 0., 0., 0.]]
 
         yolo_label = list()
 
@@ -154,7 +156,7 @@ class VocDetection(data.Dataset):
             yolo_coordinate = self._convert_coordinate(image_size, box_coordinate)
             yolo_coordinate.insert(0, cls)
             yolo_label.append(yolo_coordinate)
-
+        
         return yolo_label
 
     @staticmethod
