@@ -184,7 +184,7 @@ def get_ious(pred: torch.tensor, target: torch.tensor, object_map: np.ndarray,
         y_idx = object_map[0]
         prior_box = prior_boxes[anchor_idx]
 
-        anchor_box = get_anchor(pred, anchor_idx, anchor_channels).detach().numpy()
+        anchor_box = get_anchor(pred, anchor_idx, anchor_channels).cpu().detach().numpy()
         pred_box = boxinfo_convert_xywh_stype(anchor_box, x_idx, y_idx, x_interval, y_interval,
                                               input_image_width, input_image_height, prior_box)
         target_box = boxinfo_convert_xywh_stype(target, x_idx, y_idx, x_interval, y_interval,
