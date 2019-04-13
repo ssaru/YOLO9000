@@ -17,7 +17,7 @@ class DetectionLoss(torch.nn.Module):
         self.image_width, self.image_height = model.input_size
 
 
-    def forward(self, pred, y_hat):
+    def forward(self, pred, y_hat, device):
 
         width_S, height_S = get_pred_resolution(pred)
 
@@ -29,12 +29,12 @@ class DetectionLoss(torch.nn.Module):
         nonobj_index_map = get_nonobj_index_map(obj_index_map, self.num_classes)
 
         nonobj_loss = get_nonobj_loss(pred, nonobj_index_map, self.num_prior_boxes,
-                                      self.num_of_anchorbox_elem, self._lambda_nonobj)
+                                      self.num_of_anchorbox_elem, self._lambda_nonobj, device)
 
         obj_loss = get_obj_loss(pred, y_hat, obj_index_map, self.prior_boxes,
                                       x_interval, y_interval, self.image_width, self.image_height,
                                       self.num_classes, self.num_prior_boxes,
-                                      self.num_of_anchorbox_elem, self._lambda_obj, self._lambda_nonobj)
+                                      self.num_of_anchorbox_elem, self._lambda_obj, self._lambda_nonobj, device)
 
         total_loss = (obj_loss + nonobj_loss) / batch_size
 
@@ -44,7 +44,7 @@ class DetectionLoss(torch.nn.Module):
 def get_obj_loss(pred: torch.tensor, target: torch.tensor, obj_index_map: torch.tensor,
                  prior_boxes: List[List[int]], x_interval: float, y_interval: float, input_image_width: int,
                  input_image_height: int, num_classes: int, num_anchor_boxes: int, anchor_channels: int,
-                 lambda_obj: float, lambda_nonobj: float) -> List[torch.tensor]:
+                 lambda_obj: float, lambda_nonobj: float, device: str) -> List[torch.tensor]:
     """get obj loss list
 
 
@@ -62,6 +62,7 @@ def get_obj_loss(pred: torch.tensor, target: torch.tensor, obj_index_map: torch.
         anchor_channels (int) : number of anchor channels
         lambda_obj (float) : loss weight about object existence case
         lambda_noobj (float) : loss weight about object not existence case
+        device (str) : train device
 
     Retruns:
         obj_loss_list (List[torch.tensor]) : list of obj loss
@@ -125,7 +126,7 @@ def get_obj_loss(pred: torch.tensor, target: torch.tensor, obj_index_map: torch.
             for idx in range(num_anchor_boxes):
                 anchor_box = get_anchor(pred_on_obj, idx, anchor_channels)
                 class_block = get_class_block(anchor_box)
-                cls_target = torch.zeros(class_block.shape)
+                cls_target = torch.zeros(class_block.shape).to(device)
                 anchor_cls_loss = torch.sum(lambda_nonobj * torch.pow(class_block - cls_target, 2))
                 nonobj_loss_list.append(anchor_cls_loss)
 
@@ -253,7 +254,7 @@ def get_obj_location_index(obj_index_map: torch.tensor) -> np.ndarray:
     return object_indexmap_tuple
 
 def get_nonobj_loss(pred: torch.tensor, nonobj_index_map: torch.tensor, num_anchor_boxes: int,
-                         anchor_channels: int, lambda_noobj: float) -> List[torch.tensor]:
+                         anchor_channels: int, lambda_noobj: float, device: str) -> List[torch.tensor]:
     """get loss as non-object loss
 
     Args:
@@ -265,6 +266,7 @@ def get_nonobj_loss(pred: torch.tensor, nonobj_index_map: torch.tensor, num_anch
         num_anchor_boxes (int) : number of anchor boxes
         anchor_channels (int) : number of anchor channels
         lambda_noobj (float) : loss weight about object not existence case
+        device (str) : train device
 
     Retruns:
         nonobj_loss (List[torch.tensor]) : non-object loss consist of torch.tensor
@@ -276,7 +278,7 @@ def get_nonobj_loss(pred: torch.tensor, nonobj_index_map: torch.tensor, num_anch
     for anchor_idx in range(num_anchor_boxes):
         anchor_box = get_anchor(pred, anchor_idx, anchor_channels)
         class_block = get_class_block(anchor_box)
-        target = torch.zeros(class_block.shape)
+        target = torch.zeros(class_block.shape).to(device)
         anchor_cls_loss = lambda_noobj * torch.pow(class_block - target, 2)
         anchor_nonobj_cls_loss = torch.sum(anchor_cls_loss * nonobj_index_map)
         nonobj_loss_list.append(anchor_nonobj_cls_loss)
