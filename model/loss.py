@@ -185,20 +185,21 @@ def get_ious(pred: torch.tensor, target: torch.tensor, object_map: np.ndarray,
         prior_box = prior_boxes[anchor_idx]
 
         anchor_box = get_anchor(pred, anchor_idx, anchor_channels).cpu().detach().numpy()
-        pred_box = boxinfo_convert_xywh_stype(anchor_box, x_idx, y_idx, x_interval, y_interval,
-                                              input_image_width, input_image_height, prior_box)
-        target_box = boxinfo_convert_xywh_stype(target, x_idx, y_idx, x_interval, y_interval,
-                                              input_image_width, input_image_height, prior_box)
+        pred_box = boxinfo_convert_xywh_type(anchor_box, x_idx, y_idx, x_interval, y_interval,
+                                              input_image_width, input_image_height, prior_box, "pred")
+        # target값이랑 똑같이 convert하면 안됨.
+        target_box = boxinfo_convert_xywh_type(target, x_idx, y_idx, x_interval, y_interval,
+                                              input_image_width, input_image_height, prior_box, "target")
 
         iou = get_iou(pred_box, target_box)
         ious.append(iou)
 
     return ious
 
-def boxinfo_convert_xywh_stype(box: np.ndarray, x_idx: int, y_idx: int,
+def boxinfo_convert_xywh_type(box: np.ndarray, x_idx: int, y_idx: int,
                                x_interval: float, y_interval: float,
                                image_width: int, image_height: int,
-                               prior_box: List[int]) -> List[float]:
+                               prior_box: List[int], mode: str) -> List[float]:
     """Yolo style as [tx, ty, tw, th] convert to box style as [x, y, w, h]
 
     Args:
@@ -210,6 +211,7 @@ def boxinfo_convert_xywh_stype(box: np.ndarray, x_idx: int, y_idx: int,
         image_width (int) : input image width
         image_height (int) : input image height
         prior_box (List[int]) : prior box
+        mode (str) : convert mode -> pred or target
 
     Retruns:
         box_style (List[float]) : converted boxes style as [x, y, w, h]
@@ -224,8 +226,13 @@ def boxinfo_convert_xywh_stype(box: np.ndarray, x_idx: int, y_idx: int,
 
     center_x = x_interval * x_idx + int(x_interval * tx)
     center_y = y_interval * y_idx + int(y_interval * ty)
-    p_w = int(prior_box[0] * tw * image_width)
-    p_h = int(prior_box[1] * th * image_height)
+
+    if mode == "pred":
+        p_w = int(prior_box[0] * tw * image_width)
+        p_h = int(prior_box[1] * th * image_height)
+    elif mode == "target":
+        p_w = int(tw * image_width)
+        p_h = int(th * image_height)
 
     bx = center_x - (p_w // 2)
     by = center_y - (p_h // 2)
