@@ -22,7 +22,10 @@ class DetectionDataLoader(BaseDataLoader):
             iaa.Affine(rotate=(-45, 45)),
             iaa.Sharpen(alpha=0.5)
         ])
-        composed = transforms.Compose([Augmenter(seq)])
+        if training:
+            composed = transforms.Compose([Augmenter(seq)])
+        else:
+            composed = transforms.Compose([])
 
         self.data_dir = data_dir
         self.dataset = VocDetection(self.data_dir, transform=composed)

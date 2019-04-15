@@ -203,7 +203,7 @@ def boxinfo_convert_xywh_type(box: np.ndarray, x_idx: int, y_idx: int,
     """Yolo style as [tx, ty, tw, th] convert to box style as [x, y, w, h]
 
     Args:
-        box (numpy.ndarray) : Yolo style as [tx, ty, tw, th]
+        box (numpy.ndarray) : tensorblock as [t0, tx, ty, tw, th, cls...]
         x_idx (int) : cell x coordinates
         y_idx (int) : cell y coordinates
         x_interval (float) : ratio between image width with prediction width
@@ -243,11 +243,12 @@ def boxinfo_convert_xywh_type(box: np.ndarray, x_idx: int, y_idx: int,
 
     return box_style
 
-def get_obj_location_index(obj_index_map: torch.tensor) -> np.ndarray:
+def get_obj_location_index(obj_index_map: torch.tensor, threshold: float =1.) -> np.ndarray:
     """get object location index
 
     Args:
         obj_index_map (torch.tensor) : object location indices map consist of torch.tensor.
+        threshold (float) : threshold
 
     Retruns:
         object_indexmap_tuple (Tuple[numpy.array]) : A three-dimensional index map of whether
@@ -256,7 +257,7 @@ def get_obj_location_index(obj_index_map: torch.tensor) -> np.ndarray:
     """
 
     np_obj_index_map = obj_index_map.cpu().detach().numpy()
-    object_indexmap_tuple = np.where(np_obj_index_map == 1.)
+    object_indexmap_tuple = np.where(np_obj_index_map >= threshold)
 
     return object_indexmap_tuple
 

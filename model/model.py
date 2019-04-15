@@ -1,7 +1,13 @@
+import numpy as np
 import torch
 import torch.nn as nn
 from torchsummary.torchsummary import summary
 from base import BaseModel
+
+from model.loss import get_anchor
+from model.loss import get_obj_location_index
+from model.loss import boxinfo_convert_xywh_type
+from model.loss import get_interval
 
 
 class Yolo9000(BaseModel):
@@ -147,6 +153,42 @@ class Yolo9000(BaseModel):
                 nn.Sigmoid()(out[:, idx + 5:idx + 5 + self.num_classes, :, :].clone())
 
         return out
+
+    def detect(self, output: torch.tensor, threshold: float)-> torch.tensor:
+
+        _, _, height_S, width_S = output.shape
+
+        x_interval = get_interval(self.input_size[0], width_S)
+        y_interval = get_interval(self.input_size[1], height_S)
+
+        boxes = list()
+        for anchor_idx in range(self.num_prior_boxes):
+            anchor_channels = self.num_prior_boxes + self.num_classes
+            anchor_box = get_anchor(output, anchor_idx, anchor_channels).squeeze()
+            t0 = anchor_box[0, :, :]
+            obj_index_map = get_obj_location_index(t0, threshold)
+            len_index_map = len(obj_index_map[0])
+            prior_box = self.prior_boxes[anchor_idx]
+
+            for obj_idx in range(len_index_map):
+                _x = obj_index_map[1][obj_idx]
+                _y = obj_index_map[0][obj_idx]
+
+                _obj_block = anchor_box[:, _y, _x]
+                print(_obj_block.shape)
+                # convert bx, by, bw, bh style
+                xywh = boxinfo_convert_xywh_type(_obj_block, _x, _y, x_interval, y_interval,
+                                                 self.input_size[0], self.input_size[1], prior_box, "pred")
+                _cls = anchor_box[5:, _y, _x].cpu().detach().numpy()
+                _max_cls_value = max(_cls)
+                _cls_idx = int(np.where(_cls == _max_cls_value)[0])
+
+                boxes.append([xywh, _cls_idx])
+                print(boxes)
+                exit()
+
+                pass
+        pass
 
     def summary(self):
         summary(self, input_size=(3, self.input_size[0], self.input_size[1]), device=self.device)
