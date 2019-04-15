@@ -125,10 +125,10 @@ def get_obj_loss(pred: torch.tensor, target: torch.tensor, obj_index_map: torch.
 
             for idx in range(num_anchor_boxes):
                 anchor_box = get_anchor(pred_on_obj, idx, anchor_channels)
-                class_block = get_class_block(anchor_box)
+                class_block = get_class_block(anchor_box).to(device)
                 cls_target = torch.zeros(class_block.shape).to(device)
                 anchor_cls_loss = torch.sum(lambda_nonobj * torch.pow(class_block - cls_target, 2))
-                nonobj_loss_list.append(anchor_cls_loss)
+                nonobj_loss_list.append(anchor_cls_loss.to('cpu'))
 
     nonobj_losses = torch.stack(nonobj_loss_list).to(device)
     obj_losses = torch.stack(obj_loss_list).to(device)
