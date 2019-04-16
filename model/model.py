@@ -106,6 +106,14 @@ class Yolo9000(BaseModel):
             nn.LeakyReLU(),
             nn.Conv2d(1024, self.output_shape, kernel_size=1, stride=1, padding=0))
 
+        for m in self.modules():
+
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity="leaky_relu")
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+
     def forward(self, *input):
         assert self.num_prior_boxes == len(self.prior_boxes)
         for box in self.prior_boxes:
@@ -169,7 +177,8 @@ class Yolo9000(BaseModel):
             obj_index_map = get_obj_location_index(t0, threshold)
             len_index_map = len(obj_index_map[0])
             prior_box = self.prior_boxes[anchor_idx]
-
+            print(t0)
+            exit()
             for obj_idx in range(len_index_map):
                 _x = obj_index_map[1][obj_idx]
                 _y = obj_index_map[0][obj_idx]
