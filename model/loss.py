@@ -74,8 +74,9 @@ def get_obj_loss(pred: torch.tensor, target: torch.tensor, obj_index_map: torch.
     obj_loss_list = list(torch.zeros(1))
     nonobj_loss_list = list(torch.zeros(1))
 
-    #expanded_obj_indexmap = expand_dimension_of_indexmap(obj_index_map, 125)
-    #pred = pred * expanded_obj_indexmap
+    expanded_obj_indexmap = expand_dimension_of_indexmap(obj_index_map, 125)
+    expanded_obj_indexmap = torch.transpose(expanded_obj_indexmap, 2, 3)
+    pred = pred * expanded_obj_indexmap
 
     object_map = get_obj_location_index(obj_index_map)
     num_of_obj = len(object_map[0])
@@ -129,6 +130,10 @@ def get_obj_loss(pred: torch.tensor, target: torch.tensor, obj_index_map: torch.
             for idx in range(num_anchor_boxes):
                 anchor_box = get_anchor(pred_on_obj, idx, anchor_channels)
                 class_block = get_class_block(anchor_box).to(device)
+                if torch.sum(class_block) == 0:
+                    print("sum of class_block is zero")
+                    print(class_block)
+                    exit()
                 cls_target = torch.zeros(class_block.shape).to(device)
                 anchor_cls_loss = torch.sum(lambda_nonobj * torch.pow(class_block - cls_target, 2))
                 nonobj_loss_list.append(anchor_cls_loss.to('cpu'))
@@ -229,10 +234,7 @@ def boxinfo_convert_xywh_type(box: np.ndarray, x_idx: int, y_idx: int,
 
     center_x = x_interval * x_idx + int(x_interval * tx)
     center_y = y_interval * y_idx + int(y_interval * ty)
-    print("tx : {}".format(tx))
-    print("ty : {}".format(ty))
-    print("tw : {}".format(tw))
-    print("th : {}".format(th))
+
     if mode == "pred":
         p_w = int(prior_box[0] * tw * image_width)
         p_h = int(prior_box[1] * th * image_height)
@@ -308,13 +310,14 @@ def get_nonobj_loss(pred: torch.tensor, nonobj_index_map: torch.tensor, num_anch
         class_block = get_class_block(anchor_box)
         target = torch.zeros(class_block.shape).to(device)
         selected_class_block = class_block * nonobj_index_map
-        anchor_cls_loss = lambda_noobj * torch.pow(selected_class_block - target, 2)
+        anchor_cls_loss = torch.pow(selected_class_block - target, 2)
         anchor_nonobj_cls_loss = torch.sum(anchor_cls_loss)
         nonobj_loss_list.append(anchor_nonobj_cls_loss)
 
-    nonobj_losses = torch.stack(nonobj_loss_list).to(device)
+    nonobj_losses = torch.sum(torch.stack(nonobj_loss_list).to(device))
+    nonobj_losses = lambda_noobj * nonobj_losses
 
-    return torch.sum(nonobj_losses)
+    return nonobj_losses
 
 def get_anchor(pred: torch.tensor, idx: int, anchor_box_channels: int) -> torch.tensor:
     """get the anchor box for a specific index
