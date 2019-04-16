@@ -126,7 +126,7 @@ class VocDetection(data.Dataset):
         assert "width" in size_keys
         assert "height" in size_keys
 
-        if number_of_objects != 0:
+        if number_of_objects == 0:
             return [[0., 0., 0., 0., 0.]]
 
         yolo_label = list()
