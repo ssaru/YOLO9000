@@ -36,7 +36,7 @@ class DetectionLoss(torch.nn.Module):
                                       self.num_classes, self.num_prior_boxes,
                                       self.num_of_anchorbox_elem, self._lambda_obj, self._lambda_nonobj, device)
 
-        total_loss = (obj_loss + nonobj_loss) / batch_size
+        total_loss = ((obj_loss + nonobj_loss) / batch_size)
 
         return total_loss
 
@@ -74,6 +74,9 @@ def get_obj_loss(pred: torch.tensor, target: torch.tensor, obj_index_map: torch.
     obj_loss_list = list(torch.zeros(1))
     nonobj_loss_list = list(torch.zeros(1))
 
+    #expanded_obj_indexmap = expand_dimension_of_indexmap(obj_index_map, 125)
+    #pred = pred * expanded_obj_indexmap
+
     object_map = get_obj_location_index(obj_index_map)
     num_of_obj = len(object_map[0])
 
@@ -92,7 +95,7 @@ def get_obj_loss(pred: torch.tensor, target: torch.tensor, obj_index_map: torch.
         max_iou = max(ious)
         max_iou_idx = ious.index(max_iou)
 
-        if max_iou >= .5:
+        if max_iou >= 0.3:
             anchor_box = get_anchor(pred_on_obj, max_iou_idx, anchor_channels)
 
             pred_objness = anchor_box[0] * max_iou
@@ -226,7 +229,10 @@ def boxinfo_convert_xywh_type(box: np.ndarray, x_idx: int, y_idx: int,
 
     center_x = x_interval * x_idx + int(x_interval * tx)
     center_y = y_interval * y_idx + int(y_interval * ty)
-
+    print("tx : {}".format(tx))
+    print("ty : {}".format(ty))
+    print("tw : {}".format(tw))
+    print("th : {}".format(th))
     if mode == "pred":
         p_w = int(prior_box[0] * tw * image_width)
         p_h = int(prior_box[1] * th * image_height)
@@ -234,12 +240,26 @@ def boxinfo_convert_xywh_type(box: np.ndarray, x_idx: int, y_idx: int,
         p_w = int(tw * image_width)
         p_h = int(th * image_height)
 
-    bx = center_x - (p_w // 2)
-    by = center_y - (p_h // 2)
-    bw = bx + p_w
-    bh = by + p_h
+    xmin = center_x - (p_w // 2)
+    ymin = center_y - (p_h // 2)
+    xmax = xmin + p_w
+    ymax = ymin + p_h
 
-    box_style = [bx, by, bw, bh]
+    if xmin < 0:
+        xmin = 0
+
+    if ymin < 0 :
+        ymin = 0
+
+    if xmax > image_width:
+        xmax = image_width
+
+    if ymax > image_height:
+        ymax = image_height
+
+
+
+    box_style = [xmin, ymin, xmax, ymax]
 
     return box_style
 
@@ -287,8 +307,9 @@ def get_nonobj_loss(pred: torch.tensor, nonobj_index_map: torch.tensor, num_anch
         anchor_box = get_anchor(pred, anchor_idx, anchor_channels)
         class_block = get_class_block(anchor_box)
         target = torch.zeros(class_block.shape).to(device)
-        anchor_cls_loss = lambda_noobj * torch.pow(class_block - target, 2)
-        anchor_nonobj_cls_loss = torch.sum(anchor_cls_loss * nonobj_index_map)
+        selected_class_block = class_block * nonobj_index_map
+        anchor_cls_loss = lambda_noobj * torch.pow(selected_class_block - target, 2)
+        anchor_nonobj_cls_loss = torch.sum(anchor_cls_loss)
         nonobj_loss_list.append(anchor_nonobj_cls_loss)
 
     nonobj_losses = torch.stack(nonobj_loss_list).to(device)
@@ -346,6 +367,14 @@ def get_class_block(anchor: torch.tensor) -> torch.tensor:
     else:
         raise Exception("shape of input parameter `pred` wrong. It should be 1 or 4")
 
+def expand_dimension_of_indexmap(indexmap: torch.tensor, dimension: int) -> torch.tensor:
+    basis = indexmap.view(indexmap.shape[0], 1, indexmap.shape[1], indexmap.shape[2])
+    expand_indexmap = indexmap.view(indexmap.shape[0], 1, indexmap.shape[1], indexmap.shape[2])
+
+    for i in range(dimension-1):
+        expand_indexmap = torch.cat((expand_indexmap, basis), 1)
+
+    return expand_indexmap
 
 def get_nonobj_index_map(objness: torch.tensor, num_classes: int) -> torch.tensor:
     """get non-object location map.

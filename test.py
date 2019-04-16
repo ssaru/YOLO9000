@@ -58,7 +58,7 @@ def main(config, resume):
         for _, (data, target) in enumerate(tqdm(data_loader)):
             data, target = data.to(device), target.to(device)
             output = model(data)
-            model.detect(output, threshold=.3)
+            model.module.detect(output, threshold=.3)
 
             exit()
             #
