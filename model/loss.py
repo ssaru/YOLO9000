@@ -1,6 +1,5 @@
 import torch
 import numpy as np
-import pysnooper
 
 from typing import List
 from utils.util import get_iou
@@ -86,8 +85,8 @@ def get_obj_loss(pred: torch.tensor, target: torch.tensor, obj_index_map: torch.
         # shape of pred is [batch, channels, height, width]
         # shape of target is [batch, width, height, channels]
         # should be consider that
-        pred_on_obj = pred[object_map[0][idx], :, object_map[2][idx], object_map[1][idx]]
-        gt_on_obj = target[object_map[0][idx], object_map[1][idx], object_map[2][idx], :]
+        pred_on_obj = pred[object_map[0][idx], :, object_map[2][idx], object_map[1][idx]].to(device)
+        gt_on_obj = target[object_map[0][idx], object_map[1][idx], object_map[2][idx], :].to(device)
         specific_object_map = [object_map[1][idx], object_map[2][idx]]
 
         ious = get_ious(pred_on_obj, gt_on_obj, specific_object_map, prior_boxes,
@@ -111,7 +110,7 @@ def get_obj_loss(pred: torch.tensor, target: torch.tensor, obj_index_map: torch.
             target_ty = gt_on_obj[2]
             target_tw = gt_on_obj[3]
             target_th = gt_on_obj[4]
-            target_cls = onehot(gt_on_obj[5], num_classes)
+            target_cls = onehot(gt_on_obj[5], num_classes).to(device)
 
             obj_loss = torch.sum(torch.pow(pred_objness - target_objness, 2))
             tx_loss = torch.sum(torch.pow(pred_tx - target_tx, 2))
@@ -121,7 +120,7 @@ def get_obj_loss(pred: torch.tensor, target: torch.tensor, obj_index_map: torch.
             cls_loss = torch.sum(torch.pow(pred_cls - target_cls, 2))
 
             loss = obj_loss + (tx_loss + ty_loss + tw_loss + th_loss + cls_loss) * lambda_obj
-            obj_loss_list.append(loss)
+            obj_loss_list.append(loss.to('cpu'))
 
         # already calculated non-obj loss
         # part of max iou less than .5 case should be calculate like a non-obj
