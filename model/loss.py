@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import pysnooper
 
 from typing import List
 from utils.util import get_iou
@@ -7,8 +8,8 @@ from utils.util import get_iou
 class DetectionLoss(torch.nn.Module):
     def __init__(self, model):
         super(DetectionLoss, self).__init__()
-        self._lambda_obj = 5.
-        self._lambda_nonobj = .5
+        self._lambda_obj = 1.
+        self._lambda_nonobj = .1
         self.prior_boxes = model.prior_boxes
         self.num_prior_boxes = model.num_prior_boxes
         self.num_classes = model.num_classes
@@ -35,7 +36,7 @@ class DetectionLoss(torch.nn.Module):
                                       x_interval, y_interval, self.image_width, self.image_height,
                                       self.num_classes, self.num_prior_boxes,
                                       self.num_of_anchorbox_elem, self._lambda_obj, self._lambda_nonobj, device)
-
+    
         total_loss = ((obj_loss + nonobj_loss) / batch_size)
 
         return total_loss
@@ -98,7 +99,6 @@ def get_obj_loss(pred: torch.tensor, target: torch.tensor, obj_index_map: torch.
 
         if max_iou >= 0.3:
             anchor_box = get_anchor(pred_on_obj, max_iou_idx, anchor_channels)
-
             pred_objness = anchor_box[0] * max_iou
             pred_tx = anchor_box[1]
             pred_ty = anchor_box[2]
@@ -114,13 +114,13 @@ def get_obj_loss(pred: torch.tensor, target: torch.tensor, obj_index_map: torch.
             target_cls = onehot(gt_on_obj[5], num_classes)
 
             obj_loss = torch.sum(torch.pow(pred_objness - target_objness, 2))
-            tx_loss = lambda_obj * torch.sum(torch.pow(pred_tx - target_tx, 2))
-            ty_loss = lambda_obj * torch.sum(torch.pow(pred_ty - target_ty, 2))
-            tw_loss = lambda_obj * torch.sum(torch.pow(pred_tw - target_tw, 2))
-            th_loss = lambda_obj * torch.sum(torch.pow(pred_th - target_th, 2))
-            cls_loss = lambda_obj * torch.sum(torch.pow(pred_cls - target_cls, 2))
+            tx_loss = torch.sum(torch.pow(pred_tx - target_tx, 2))
+            ty_loss = torch.sum(torch.pow(pred_ty - target_ty, 2))
+            tw_loss = torch.sum(torch.pow(pred_tw - target_tw, 2))
+            th_loss = torch.sum(torch.pow(pred_th - target_th, 2))
+            cls_loss = torch.sum(torch.pow(pred_cls - target_cls, 2))
 
-            loss = obj_loss + tx_loss + ty_loss + tw_loss + th_loss + cls_loss
+            loss = obj_loss + (tx_loss + ty_loss + tw_loss + th_loss + cls_loss) * lambda_obj
             obj_loss_list.append(loss)
 
         # already calculated non-obj loss
@@ -129,17 +129,18 @@ def get_obj_loss(pred: torch.tensor, target: torch.tensor, obj_index_map: torch.
 
             for idx in range(num_anchor_boxes):
                 anchor_box = get_anchor(pred_on_obj, idx, anchor_channels)
+
                 class_block = get_class_block(anchor_box).to(device)
                 if torch.sum(class_block) == 0:
                     print("sum of class_block is zero")
                     print(class_block)
                     exit()
                 cls_target = torch.zeros(class_block.shape).to(device)
-                anchor_cls_loss = torch.sum(lambda_nonobj * torch.pow(class_block - cls_target, 2))
+                anchor_cls_loss = torch.sum(lambda_nonobj * (torch.pow(class_block - cls_target, 2)))
                 nonobj_loss_list.append(anchor_cls_loss.to('cpu'))
 
-    nonobj_losses = torch.stack(nonobj_loss_list).to(device)
-    obj_losses = torch.stack(obj_loss_list).to(device)
+    nonobj_losses = torch.stack(nonobj_loss_list).to(device) / num_of_obj
+    obj_losses = torch.stack(obj_loss_list).to(device) / num_of_obj
 
     return torch.sum(obj_losses) + torch.sum(nonobj_losses)
 
@@ -307,15 +308,15 @@ def get_nonobj_loss(pred: torch.tensor, nonobj_index_map: torch.tensor, num_anch
 
     for anchor_idx in range(num_anchor_boxes):
         anchor_box = get_anchor(pred, anchor_idx, anchor_channels)
+        batch_size, _, _, _ = anchor_box.shape
         class_block = get_class_block(anchor_box)
         target = torch.zeros(class_block.shape).to(device)
         selected_class_block = class_block * nonobj_index_map
-        anchor_cls_loss = torch.pow(selected_class_block - target, 2)
+        anchor_cls_loss = lambda_noobj * (torch.pow(selected_class_block - target, 2) / batch_size)
         anchor_nonobj_cls_loss = torch.sum(anchor_cls_loss)
         nonobj_loss_list.append(anchor_nonobj_cls_loss)
 
     nonobj_losses = torch.sum(torch.stack(nonobj_loss_list).to(device))
-    nonobj_losses = lambda_noobj * nonobj_losses
 
     return nonobj_losses
 

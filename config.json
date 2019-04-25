@@ -5,12 +5,34 @@
     "arch": {
         "type": "Yolo9000",
         "args": {
+            "prior_boxes": [
+                [
+                    0.8935830875249917,
+                    0.9072204690364727
+                ],
+                [
+                    0.08130476053104242,
+                    0.13751310041146791
+                ],
+                [
+                    0.21987874839359806,
+                    0.37479207048337504
+                ],
+                [
+                    0.4291295536946976,
+                    0.6015634230936822
+                ],
+                [
+                    0.6721661602997638,
+                    0.7506497666630143
+                ]
+            ]
         }
     },
     "data_loader": {
         "type": "DetectionDataLoader",
         "args":{
-            "data_dir": "/home/keti-1080ti/Documents/dev/Deepbaksu_vision/_Datasets/VOCdevkit/VOC2012",
+            "data_dir": "/Users/martin/Documents/dev/Deepbaksu_vision/_Datasets/VOCdevkit/VOC2012",
             "batch_size": 32,
             "shuffle": true,
             "validation_split": 0.1,
@@ -21,8 +43,8 @@
     "optimizer": {
         "type": "Adam",
         "args":{
-            "lr": 0.001,
-            "weight_decay": 0,
+            "lr": 1e-5,
+            "weight_decay": 5e-4,
             "amsgrad": true
         }
     },
@@ -48,7 +70,7 @@
         "early_stop": 10,
         
         "tensorboardX": true,
-        "wandb": true,
+        "wandb": false,
         "log_dir": "saved/runs"
     }
 }
